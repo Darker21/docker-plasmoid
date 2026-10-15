@@ -4,11 +4,14 @@ using Docker.DotNet;
 using Microsoft.Extensions.Options;
 using PlasmaDockerMonitor.Api.Endpoints;
 using PlasmaDockerMonitor.Api.Enums;
+using PlasmaDockerMonitor.Api.Ioc;
 using PlasmaDockerMonitor.Api.Options;
 using PlasmaDockerMonitor.Api.Services;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddSerilogLogging(builder.Configuration);
 
 builder.Services.AddOpenApi();
 
@@ -34,6 +37,8 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 
 var app = builder.Build();
 
+var logger = app.Services.GetRequiredService<ILogger<Program>>();
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi("/openapi/{documentName}.yaml");
@@ -41,10 +46,11 @@ if (app.Environment.IsDevelopment())
     {
         opts.WithOpenApiRoutePattern("/openapi/{documentName}.yaml");
     });
+    logger.LogTrace("Development tools attached");
 }
 
 app.MapGet("/health-check", () => Results.Ok("alive"));
 
-app.MapContainerEndpoints();
+app.MapContainerEndpoints(logger);
 
 app.Run();

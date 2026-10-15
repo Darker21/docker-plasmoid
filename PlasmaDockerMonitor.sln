@@ -2,7 +2,11 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72D-47B6-A68D-7590B98EB39B}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{F2248A9E-C8A4-11F1-8C1E-00D861F95DA2}"
+EndProject 
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PlasmaDockerMonitor.Api", "src\PlasmaDockerMonitor.Api\PlasmaDockerMonitor.Api.csproj", "{25D267EB-4125-4F5D-A691-19FDEF949F35}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PlasmaDockerMonitor.Api.Tests", "test\PlasmaDockerMonitor.Api.Tests\PlasmaDockerMonitor.Api.Tests.csproj", "{77731F4A-C81F-4555-AE65-C0C78EC8A339}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -26,6 +30,18 @@ Global
 		{25D267EB-4125-4F5D-A691-19FDEF949F35}.Release|x64.Build.0 = Release|Any CPU
 		{25D267EB-4125-4F5D-A691-19FDEF949F35}.Release|x86.ActiveCfg = Release|Any CPU
 		{25D267EB-4125-4F5D-A691-19FDEF949F35}.Release|x86.Build.0 = Release|Any CPU
+		{77731F4A-C81F-4555-AE65-C0C78EC8A339}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{77731F4A-C81F-4555-AE65-C0C78EC8A339}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{77731F4A-C81F-4555-AE65-C0C78EC8A339}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{77731F4A-C81F-4555-AE65-C0C78EC8A339}.Debug|x64.Build.0 = Debug|Any CPU
+		{77731F4A-C81F-4555-AE65-C0C78EC8A339}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{77731F4A-C81F-4555-AE65-C0C78EC8A339}.Debug|x86.Build.0 = Debug|Any CPU
+		{77731F4A-C81F-4555-AE65-C0C78EC8A339}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{77731F4A-C81F-4555-AE65-C0C78EC8A339}.Release|Any CPU.Build.0 = Release|Any CPU
+		{77731F4A-C81F-4555-AE65-C0C78EC8A339}.Release|x64.ActiveCfg = Release|Any CPU
+		{77731F4A-C81F-4555-AE65-C0C78EC8A339}.Release|x64.Build.0 = Release|Any CPU
+		{77731F4A-C81F-4555-AE65-C0C78EC8A339}.Release|x86.ActiveCfg = Release|Any CPU
+		{77731F4A-C81F-4555-AE65-C0C78EC8A339}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -33,4 +49,7 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{25D267EB-4125-4F5D-A691-19FDEF949F35} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+	    {77731F4A-C81F-4555-AE65-C0C78EC8A339} = {F2248A9E-C8A4-11F1-8C1E-00D861F95DA2}
+    EndGlobalSection
 EndGlobal

@@ -38,14 +38,16 @@ just the entry point.
 ## Status
 
 This is being built in phases (see the spec's §6 for the full breakdown).
-Currently in progress: **Phase 1 — vertical slice**.
+**Phase 1 (vertical slice) is done on the API side**, and some of Phase 3's
+API work has landed too, ahead of Phase 2.
 
 | Piece | State |
 |---|---|
-| API: `GET /containers` (list all containers) | ✅ Implemented |
+| API: `GET /containers`, grouped into `standalone`/`stacks` by compose project | ✅ Implemented |
 | API: `POST /containers/{id}/start\|stop\|restart` | ✅ Implemented |
 | API: `GET /containers/{id}/stats` (single snapshot) | ✅ Implemented |
-| API: compose stack grouping (`standalone`/`stacks` split) | ⬜ Not started (Phase 3) |
+| API: `GET /compose/{stackName}/stats` (aggregated stack stats) | ✅ Implemented |
+| API: `containerSettings` config / global toggles / manual ordering | ⬜ Not started (Phase 2) |
 | API: exclusion list, sort-mode-aware aggregates | ⬜ Not started (Phase 4) |
 | API: multi-host aggregation | ⬜ Not started (Phase 5) |
 | Plasmoid (QML widget) | ⬜ Not started |
@@ -64,6 +66,9 @@ docker-plasmoid/
       Models/                     -> DTOs returned by the API, and the Result/Result<T> pattern
       Enums/
       Options/                    -> strongly-typed config (e.g. Docker socket URI)
+      Ioc/                        -> DI/logging setup (Serilog, config-driven via appsettings.json)
+  test/
+    PlasmaDockerMonitor.Api.Tests/ -> xUnit suite (unit + WebApplicationFactory integration tests)
 ```
 
 A `plasmoid/` directory (the actual KDE widget) will be added once that work
@@ -86,27 +91,48 @@ By default this launches a browser straight to **`/scalar`** — an interactive
 OpenAPI UI for exploring and trying out every endpoint without needing the
 plasmoid (which doesn't exist yet) or a raw HTTP client.
 
+Logging is config-driven via the `Serilog` section in `appsettings.json` —
+by default it writes to the console and to `Logs/` (rolling hourly), with
+`appsettings.Development.json` bumping the minimum level to `Verbose` for
+local development.
+
 ### API overview
 
 | Endpoint | Description |
 |---|---|
-| `GET /containers` | List all containers known to this host (currently a flat list — compose-stack grouping is still Phase 3) |
+| `GET /containers` | List containers, split into `standalone` and `stacks` (grouped by compose project) |
 | `POST /containers/{id}/start` | Start a container |
 | `POST /containers/{id}/stop` | Stop a container |
 | `POST /containers/{id}/restart` | Restart a container |
 | `GET /containers/{id}/stats` | Single-snapshot CPU/memory stats for one container |
+| `GET /compose/{stackName}/stats` | Aggregated CPU/memory stats across a compose stack's containers |
 
 Full request/response shapes are in the generated OpenAPI doc (`/scalar`, or
 `/openapi/v1.json` directly) rather than duplicated here, so this table
 doesn't go stale as the DTOs evolve.
 
+### Running the tests
+
+```bash
+dotnet test
+```
+
+The suite covers `LocalDockerService` (mocked `IDockerClient`), the endpoints
+(integration tests via `WebApplicationFactory`, with `IDockerService` mocked),
+and `Program.cs`'s own composition root — currently at 100% line/branch
+coverage. To check coverage yourself:
+
+```bash
+dotnet test --collect:"XPlat Code Coverage"
+```
+
 ## Roadmap
 
 Condensed from the spec's §6 — see that section for full detail:
 
-1. **Vertical slice** — flat container list + start/stop/restart (in progress)
+1. **Vertical slice** — container list + start/stop/restart (API done, plasmoid not started)
 2. **Configurability** — global display toggles, per-item overrides, manual ordering
-3. **Compose stacks** — grouping, accordion UI, stack-level aggregates
+3. **Compose stacks** — grouping + aggregate stats (API done), accordion UI (plasmoid not started)
 4. **Sort modes + exclusion** — uptime/CPU/mem sorting, scope-path-based exclusion
 5. **Remote hosts** — widget-per-host, and/or single-widget multi-host aggregation
 

@@ -40,5 +40,12 @@ public interface IDockerService
     /// </summary>
     /// <param name="id">The ID of the target container</param>
     /// <returns>Result object with container stats</returns>
-    Task<Result<ContainerStatsDto>> GetStatsAsync(string id);
+    Task<Result<ContainerStatsDto>> GetContainerStatsAsync(string id);
+
+    /// <summary>
+    /// Get the detailed stats for a compose stack
+    /// </summary>
+    /// <param name="stackName">The name of the target compose stack</param>
+    /// <returns>Result object with compose stats</returns>
+    Task<Result<ComposeStackDto>> GetComposeStackStatsAsync(string stackName);
 }

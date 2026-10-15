@@ -117,7 +117,7 @@ internal static class ContainerEndpoints
                     return Results.BadRequest();
                 }
 
-                var result = await dockerService.GetStatsAsync(containerId);
+                var result = await dockerService.GetContainerStatsAsync(containerId);
                 if (result.Success)
                     return Results.Ok(result);
 
@@ -127,6 +127,43 @@ internal static class ContainerEndpoints
                     _ => Results.InternalServerError(result)
                 };
             }).Produces<Result<ContainerStatsDto>>()
+            .Produces<Result>(StatusCodes.Status404NotFound)
+            .Produces<Result>(StatusCodes.Status500InternalServerError);
+
+        return endpoints;
+    }
+
+    public static IEndpointRouteBuilder MapComposeEndpoint(this IEndpointRouteBuilder endpoints, ILogger logger)
+    {
+        logger.LogInformation("Mapping compose endpoints");
+
+        var group = endpoints.MapGroup("/compose")
+            .WithTags("Compose")
+            .WithDisplayName("Compose Stacks");
+
+        group.MapGet("/{stackName}/stats",
+            async (IDockerService dockerService, ILogger<Program> requestLogger,
+                [Description("The name of the stack to retrieve stats for")]
+                string stackName) =>
+            {
+                requestLogger.LogInformation("GET /compose/{StackName}/stats received", stackName);
+                if (string.IsNullOrWhiteSpace(stackName))
+                {
+                    logger.LogWarning("Stack name is required");
+                    return Results.BadRequest();
+                }
+                
+                var result = await dockerService.GetComposeStackStatsAsync(stackName);
+
+                if (result.Success)
+                    return Results.Ok(result);
+                
+                return result.ErrorKind switch
+                {
+                    ResultErrorKind.NotFound => Results.NotFound(result),
+                    _ => Results.InternalServerError(result)
+                };
+            }).Produces<Result<ComposeStackDto>>()
             .Produces<Result>(StatusCodes.Status404NotFound)
             .Produces<Result>(StatusCodes.Status500InternalServerError);
 

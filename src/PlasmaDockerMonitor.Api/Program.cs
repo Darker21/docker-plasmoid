@@ -52,5 +52,6 @@ if (app.Environment.IsDevelopment())
 app.MapGet("/health-check", () => Results.Ok("alive"));
 
 app.MapContainerEndpoints(logger);
+app.MapComposeEndpoint(logger);
 
 app.Run();

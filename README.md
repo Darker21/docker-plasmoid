@@ -5,9 +5,10 @@ backed by a small custom API rather than talking to the Docker socket directly
 from QML. The API exists so that "local Docker today, remote homelab hosts
 later" is a backend concern the plasmoid never has to know about.
 
-> **Status:** early development. The backend API is partway through its first
-> vertical slice; the plasmoid itself hasn't been started yet. See
-> [Status](#status) below for exactly what works today.
+> **Status:** early development. The backend API and the plasmoid both cover
+> container listing/actions, compose-stack grouping, and config (toggles,
+> per-item overrides, manual ordering). Sort modes, exclusion, and multi-host
+> are still ahead. See [Status](#status) below for exactly what works today.
 
 ## Overview
 
@@ -38,8 +39,8 @@ just the entry point.
 ## Status
 
 This is being built in phases (see the spec's §6 for the full breakdown).
-**Phase 1 (vertical slice) is done on the API side**, and some of Phase 3's
-API work has landed too, ahead of Phase 2.
+**Phases 1-3 are done on both the API and plasmoid side**; Phase 4 (sort
+modes, exclusion) and Phase 5 (multi-host) haven't been started.
 
 | Piece | State |
 |---|---|
@@ -47,10 +48,13 @@ API work has landed too, ahead of Phase 2.
 | API: `POST /containers/{id}/start\|stop\|restart` | ✅ Implemented |
 | API: `GET /containers/{id}/stats` (single snapshot) | ✅ Implemented |
 | API: `GET /compose/{stackName}/stats` (aggregated stack stats) | ✅ Implemented |
-| API: `containerSettings` config / global toggles / manual ordering | ⬜ Not started (Phase 2) |
 | API: exclusion list, sort-mode-aware aggregates | ⬜ Not started (Phase 4) |
 | API: multi-host aggregation | ⬜ Not started (Phase 5) |
-| Plasmoid (QML widget) | ⬜ Not started |
+| Plasmoid: container list + start/stop/restart (`main.qml`, `ContainerRow.qml`) | ✅ Implemented |
+| Plasmoid: compose-stack accordion (`StackRow.qml`) | ✅ Implemented |
+| Plasmoid: config — API URL, global toggles, per-item CPU/Mem overrides, manual ordering (`configGeneral.qml`) | ✅ Implemented |
+| Plasmoid: sort modes, freeze-on-arrow-click, exclusion picker | ⬜ Not started (Phase 4) |
+| Plasmoid: multi-host (`host:` scope prefix) | ⬜ Not started (Phase 5) |
 
 ## Repository layout
 
@@ -69,10 +73,23 @@ docker-plasmoid/
       Ioc/                        -> DI/logging setup (Serilog, config-driven via appsettings.json)
   test/
     PlasmaDockerMonitor.Api.Tests/ -> xUnit suite (unit + WebApplicationFactory integration tests)
+  plasmoid/
+    package/
+      metadata.json              -> widget id/name/icon, X-Plasma-API-Minimum-Version: 6.0
+      contents/
+        ui/
+          main.qml                -> polling timer, model, ListView (ContainerRow/StackRow delegates)
+          ContainerRow.qml        -> one container: status dot, CPU/Mem, start/stop/restart, reorder arrows
+          StackRow.qml            -> one compose stack: header + accordion of child ContainerRows
+          configGeneral.qml       -> config UI: API URL, global toggles, per-item overrides, ordering
+          containerSettings.js    -> pure logic for the containerSettings config entry
+          dockerApi.js            -> shared XHR helpers (GET/POST against the API)
+        config/
+          main.xml                 -> Plasmoid.configuration schema
+          config.qml               -> ConfigModel wiring main.xml's categories to their QML pages
 ```
 
-A `plasmoid/` directory (the actual KDE widget) will be added once that work
-starts — see the spec's §5 and §8.1 for the planned shape.
+See the spec's §5 and §8.1 for the originally-planned shape this follows.
 
 ## Running the API locally
 
@@ -89,7 +106,7 @@ dotnet run
 
 By default this launches a browser straight to **`/scalar`** — an interactive
 OpenAPI UI for exploring and trying out every endpoint without needing the
-plasmoid (which doesn't exist yet) or a raw HTTP client.
+plasmoid or a raw HTTP client.
 
 Logging is config-driven via the `Serilog` section in `appsettings.json` —
 by default it writes to the console and to `Logs/` (rolling hourly), with
@@ -126,15 +143,41 @@ coverage. To check coverage yourself:
 dotnet test --collect:"XPlat Code Coverage"
 ```
 
+## Running the plasmoid locally
+
+**Prerequisites:** a KDE Plasma 6 desktop (for `plasmoidviewer`/`kpackagetool6`), and the API running (see above) — the plasmoid talks to it over HTTP, it doesn't touch Docker directly.
+
+Preview it without installing anything, pointed at a package checkout:
+
+```bash
+plasmoidviewer -a ./plasmoid/package
+```
+
+For a panel-style preview specifically (rather than the floating default):
+
+```bash
+plasmoidviewer -a ./plasmoid/package -l topedge -f horizontal
+```
+
+To actually install it onto your desktop:
+
+```bash
+kpackagetool6 -t Plasma/Applet -i plasmoid/package
+```
+
+(`-u` instead of `-i` to update after making changes, once it's already installed.)
+
+Configure the API URL via the widget's own config dialog (right-click → Configure) — it defaults to `http://localhost:5169`, matching the API's default dev profile.
+
 ## Roadmap
 
 Condensed from the spec's §6 — see that section for full detail:
 
-1. **Vertical slice** — container list + start/stop/restart (API done, plasmoid not started)
-2. **Configurability** — global display toggles, per-item overrides, manual ordering
-3. **Compose stacks** — grouping + aggregate stats (API done), accordion UI (plasmoid not started)
-4. **Sort modes + exclusion** — uptime/CPU/mem sorting, scope-path-based exclusion
-5. **Remote hosts** — widget-per-host, and/or single-widget multi-host aggregation
+1. **Vertical slice** — container list + start/stop/restart ✅
+2. **Configurability** — global display toggles, per-item overrides, manual ordering ✅
+3. **Compose stacks** — grouping + aggregate stats, accordion UI ✅
+4. **Sort modes + exclusion** — uptime/CPU/mem sorting, scope-path-based exclusion, freeze-on-arrow-click
+5. **Remote hosts** — widget-per-host, and/or single-widget multi-host aggregation (auth mechanism still undecided — spec §7)
 
 ## License
 

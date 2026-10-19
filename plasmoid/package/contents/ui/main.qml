@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Templates as T
@@ -127,6 +129,10 @@ PlasmoidItem {
         T.ScrollBar.vertical: PlasmaComponents.ScrollBar {}
 
         delegate: Loader {
+            id: rowLoader
+
+            required property var modelData
+
             width: containerListView.width
             source: modelData.type === "stack" ? "StackRow.qml" : "ContainerRow.qml"
 
@@ -136,14 +142,18 @@ PlasmoidItem {
                 item.resolveShowMem = root.resolveShowMem;
                 item.scope = "top";
 
-                if (modelData.type === "stack") {
-                    item.stack = modelData.data;
-                    item.itemId = "stack:" + modelData.data.projectName;
+                if (rowLoader.modelData.type === "stack") {
+                    item.stack = rowLoader.modelData.data;
+                    item.itemId = "stack:" + rowLoader.modelData.data.projectName;
                 } else {
-                    item.container = modelData.data;
-                    item.itemId = modelData.data.id;
+                    item.container = rowLoader.modelData.data;
+                    item.itemId = rowLoader.modelData.data.id;
                 }
 
+                // Loader.item is dynamically typed (it switches between
+                // ContainerRow and StackRow based on `source`), so qmllint
+                // can't statically verify actionRequested/moveRequested
+                // exist on it — known, accepted limitation of this pattern.
                 item.actionRequested.connect(root.performAction);
                 item.moveRequested.connect(root.moveItem);
             }

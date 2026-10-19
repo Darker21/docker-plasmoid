@@ -1,0 +1,81 @@
+name: Plasmoid CI
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'plasmoid/**'
+      - '.github/workflows/plasmoid-ci.yml'
+  pull_request:
+    paths:
+      - 'plasmoid/**'
+      - '.github/workflows/plasmoid-ci.yml'
+
+jobs:
+  validate:
+    name: Validate plasmoid package
+    runs-on: ubuntu-latest
+    # QML for a KDE Plasma widget can't be meaningfully linted on a bare Ubuntu
+    # runner — qmllint needs the actual KDE Plasma/Kirigami QML modules
+    # installed to resolve org.kde.plasma.* imports, same reason the IDE's own
+    # language server threw false positives without them. Pinned (not
+    # fedora:latest) so a future Fedora release can't silently change package
+    # versions/behavior under CI without a deliberate bump here.
+    container:
+      image: fedora:44
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install KDE Plasma QML tooling
+        run: |
+          dnf install -y --setopt=install_weak_deps=False \
+            qt6-qtdeclarative-devel \
+            libplasma \
+            kf6-kirigami \
+            kf6-ksvg \
+            python3 \
+            zip
+
+      - name: Validate metadata.json is well-formed and has required fields
+        run: |
+          python3 - <<'PY'
+          import json, sys
+
+          with open("plasmoid/package/metadata.json") as f:
+              data = json.load(f)
+
+          kplugin = data.get("KPlugin", {})
+          missing = [k for k in ("Id", "Name", "Icon") if k not in kplugin]
+          if missing:
+              sys.exit(f"metadata.json KPlugin missing required fields: {missing}")
+
+          if "X-Plasma-API-Minimum-Version" not in data:
+              sys.exit("metadata.json missing X-Plasma-API-Minimum-Version")
+
+          print("metadata.json OK")
+          PY
+
+      - name: Validate contents/config/main.xml is well-formed XML
+        run: |
+          python3 -c "
+          import xml.etree.ElementTree as ET
+          ET.parse('plasmoid/package/contents/config/main.xml')
+          print('main.xml OK')
+          "
+
+      - name: Lint every QML file
+        # qmllint's own exit code already only reflects genuine errors, not
+        # warnings/info — a handful of warnings are expected and accepted here
+        # (e.g. i18n() inside ConfigCategory is flagged even in KDE's own
+        # shipped plasmoids; Loader.item's dynamic type can't be statically
+        # verified). Full output still prints either way, so they stay visible
+        # without failing the build on inherent, unfixable noise.
+        run: find plasmoid/package/contents -name '*.qml' -print0 | xargs -0 -n1 qmllint-qt6
+
+      - name: Dry-run package the .plasmoid zip
+        run: |
+          cd plasmoid/package
+          zip -rq /tmp/plasma-docker-monitor.plasmoid .
+          echo "Packaged $(du -h /tmp/plasma-docker-monitor.plasmoid | cut -f1)"

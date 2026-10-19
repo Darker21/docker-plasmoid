@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Layouts
 import org.kde.plasma.components as PlasmaComponents
@@ -72,11 +74,15 @@ Item {
                 model: root.stack ? root.stack.containers : []
 
                 ContainerRow {
+                    id: childRow
+
+                    required property var modelData
+
                     Layout.fillWidth: true
-                    container: modelData
+                    container: childRow.modelData
                     indented: true
                     scope: root.stack ? root.stack.projectName : ""
-                    itemId: modelData.id
+                    itemId: childRow.modelData.id
                     apiBaseUrl: root.apiBaseUrl
                     resolveShowCpu: root.resolveShowCpu
                     resolveShowMem: root.resolveShowMem

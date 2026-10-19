@@ -1,0 +1,20 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Email": "jacob@darker.software",
+                "Name": "Jacob Darker"
+            }
+        ],
+        "Category": "Development Tools",
+        "Description": "A observability and monitoring plugin for Docker containers, providing insights into resource usage and performance metrics.",
+        "Icon": "hwinfo",
+        "Id": "com.github.darker21.docker-plasmoid",
+        "Name": "Docker Plasmoid",
+        "Version": "1",
+        "Website": "https://github.com/darker21/docker-plasmoid",
+        "BugReportUrl": "https://github.com/darker21/docker-plasmoid/issues"
+    },
+    "X-Plasma-API-Minimum-Version": "6.0",
+    "KPackageStructure": "Plasma/Applet"
+}

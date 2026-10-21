@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Docker.DotNet;
 using Microsoft.Extensions.Options;
+using PlasmaDockerMonitor.Api;
 using PlasmaDockerMonitor.Api.Endpoints;
 using PlasmaDockerMonitor.Api.Enums;
 using PlasmaDockerMonitor.Api.Ioc;
@@ -13,7 +14,14 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddSerilogLogging(builder.Configuration);
 
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(AppVersion.Current, options =>
+{
+    options.AddDocumentTransformer((document, _, _) =>
+    {
+        document.Info.Version = AppVersion.Current;
+        return Task.CompletedTask;
+    });
+});
 
 builder.Services.AddOptions<DockerOptions>()
     .Bind(builder.Configuration.GetSection("Docker"))
@@ -44,7 +52,8 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi("/openapi/{documentName}.yaml");
     app.MapScalarApiReference(opts =>
     {
-        opts.WithOpenApiRoutePattern("/openapi/{documentName}.yaml");
+        opts.WithOpenApiRoutePattern("/openapi/{documentName}.yaml")
+            .AddDocument(AppVersion.Current);
     });
     logger.LogTrace("Development tools attached");
 }

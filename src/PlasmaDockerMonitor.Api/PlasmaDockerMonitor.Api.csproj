@@ -23,5 +23,14 @@
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
   </ItemGroup>
 
+  <!-- Release builds pass /p:ReleaseVersion=x.y.z; without it the API reports itself as "dev" (see AppVersion.cs) -->
+  <PropertyGroup Condition="'$(ReleaseVersion)' != ''">
+    <Version>$(ReleaseVersion)</Version>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(ReleaseVersion)' != ''">
+    <AssemblyMetadata Include="ReleaseVersion" Value="$(ReleaseVersion)" />
+  </ItemGroup>
+
   
 </Project>

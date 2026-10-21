@@ -125,8 +125,10 @@ local development.
 | `GET /compose/{stackName}/stats` | Aggregated CPU/memory stats across a compose stack's containers |
 
 Full request/response shapes are in the generated OpenAPI doc (`/scalar`, or
-`/openapi/v1.json` directly) rather than duplicated here, so this table
-doesn't go stale as the DTOs evolve.
+`/openapi/dev.yaml` directly) rather than duplicated here, so this table
+doesn't go stale as the DTOs evolve. The document is named after the build's
+release version (`AppVersion`), so local builds serve `dev` and a release
+build of `1.2.3` serves `/openapi/1.2.3.yaml`.
 
 ### Running the tests
 

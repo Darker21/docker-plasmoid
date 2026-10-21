@@ -19,6 +19,19 @@ public class ProgramShould
     }
 
     [Fact]
+    public async Task ServeOpenApiDocument_NamedAndVersionedAsAppVersion()
+    {
+        using var factory = new WebApplicationFactory<Program>();
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync($"/openapi/{AppVersion.Current}.yaml");
+        var document = await response.Content.ReadAsStringAsync();
+
+        Assert.True(response.IsSuccessStatusCode, $"expected success, got {response.StatusCode}");
+        Assert.Contains($"version: {AppVersion.Current}", document);
+    }
+
+    [Fact]
     public void RegisterDockerClient_WithPlatformDefaultSocket_WhenUriIsNotConfigured()
     {
         using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>

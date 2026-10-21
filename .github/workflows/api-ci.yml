@@ -8,12 +8,10 @@ on:
       - 'test/**'
       - '.dockerignore'
       - '.github/workflows/api-ci.yml'
+  # No path filter on PRs: these jobs are required status checks, and a
+  # filtered-out run never reports, which would leave e.g. a docs-only PR
+  # unmergeable
   pull_request:
-    paths:
-      - 'src/**'
-      - 'test/**'
-      - '.dockerignore'
-      - '.github/workflows/api-ci.yml'
 
 permissions:
   contents: read

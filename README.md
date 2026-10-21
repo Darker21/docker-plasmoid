@@ -40,6 +40,81 @@ and release plans — is written up in
 source of truth for *why* things are shaped the way they are; this README is
 just the entry point.
 
+## Installation
+
+You need two pieces: the API, running as a container next to Docker, and the
+widget on a **KDE Plasma 6** desktop. Both come from
+[Releases](https://github.com/Darker21/docker-plasmoid/releases). The examples
+below use `1.0.0`; substitute the latest version.
+
+### 1. Run the API
+
+The image is published to `ghcr.io/darker21/docker-plasmoid-api`. Save this
+as `docker-compose.yml`:
+
+```yaml
+services:
+  api:
+    image: ghcr.io/darker21/docker-plasmoid-api:1.0.0
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5169:8080"
+    group_add:
+      - "${DOCKER_GID:?set DOCKER_GID to the gid owning /var/run/docker.sock}"
+    security_opt:
+      - label=disable
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - logs:/app/Logs
+
+volumes:
+  logs:
+```
+
+then start it and check it can see your containers:
+
+```bash
+DOCKER_GID=$(stat -c '%g' /var/run/docker.sock) docker compose up -d
+curl http://localhost:5169/containers
+```
+
+The settings are all needed. See [Running the API in Docker](#running-the-api-in-docker)
+for why each one is there. Most importantly, keep the port bound to `127.0.0.1`:
+the API has no authentication, and access to the Docker socket is
+root-equivalent on the host.
+
+To pin the exact image you verified, replace the tag with the digest from the
+release notes (`ghcr.io/darker21/docker-plasmoid-api@sha256:…`). If you'd
+rather not use a registry, each release also includes the image as a tarball
+for `docker load -i docker-plasmoid-api-<version>.image.tar.gz`.
+
+### 2. Install the widget
+
+Download the `.plasmoid` and verify it against the release's checksums:
+
+```bash
+VERSION=1.0.0
+BASE=https://github.com/Darker21/docker-plasmoid/releases/download/v$VERSION
+curl -LO "$BASE/plasma-docker-monitor-$VERSION.plasmoid" -LO "$BASE/SHA256SUMS"
+sha256sum -c --ignore-missing SHA256SUMS
+```
+
+Install it:
+
+```bash
+kpackagetool6 -t Plasma/Applet -i plasma-docker-monitor-$VERSION.plasmoid
+```
+
+or graphically: right-click the desktop or panel → **Add Widgets…** → **Get
+New Widgets** → **Install Widget From Local File…**. Then add **Docker
+Plasmoid** from the widget list to your panel or desktop.
+
+It connects to `http://localhost:5169` by default, which matches the compose
+file above. If the API is elsewhere, change it under right-click → **Configure…**.
+
+To upgrade, use `-u` instead of `-i` with the newer file. To uninstall, run
+`kpackagetool6 -t Plasma/Applet -r com.github.darker21.docker-plasmoid`.
+
 ## Status
 
 This is being built in phases (see the spec's §6 for the full breakdown).

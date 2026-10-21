@@ -11,6 +11,9 @@ on:
       - 'plasmoid/**'
       - '.github/workflows/plasmoid-ci.yml'
 
+permissions:
+  contents: read
+
 jobs:
   validate:
     name: Validate plasmoid package

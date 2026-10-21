@@ -146,7 +146,11 @@ internal static class ContainerEndpoints
                 [Description("The name of the stack to retrieve stats for")]
                 string stackName) =>
             {
-                requestLogger.LogInformation("GET /compose/{StackName}/stats received", stackName);
+                var sanitizedStackName = (stackName ?? string.Empty)
+                    .Replace("\r", string.Empty)
+                    .Replace("\n", string.Empty);
+
+                requestLogger.LogInformation("GET /compose/{StackName}/stats received", sanitizedStackName);
                 if (string.IsNullOrWhiteSpace(stackName))
                 {
                     logger.LogWarning("Stack name is required");

@@ -1,0 +1,276 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release, e.g. 1.0.0 or 1.1.0-rc.1 (tagged as v<version> on the selected branch)'
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.event.inputs.version || github.ref_name }}
+
+jobs:
+  prepare:
+    name: Resolve version
+    runs-on: ubuntu-latest
+    permissions:
+      # Manual dispatch pushes the tag itself. Pushes made with GITHUB_TOKEN
+      # don't trigger workflows, so this can't kick off a second release run.
+      contents: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve and validate version
+        id: version
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            version="${INPUT_VERSION#v}"
+          else
+            version="${GITHUB_REF_NAME#v}"
+          fi
+
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::'$version' isn't a semantic version (expected e.g. 1.0.0 or 1.1.0-rc.1)"
+            exit 1
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+          [[ "$version" == *-* ]] && prerelease=true || prerelease=false
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+
+      - name: Create tag (manual dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null; then
+            echo "::error::Tag $TAG already exists"
+            exit 1
+          fi
+          git tag "$TAG"
+          git push origin "$TAG"
+
+  plasmoid:
+    name: Package plasmoid
+    needs: prepare
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+
+      - name: Stamp version into metadata.json
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          jq --arg v "$VERSION" '.KPlugin.Version = $v' plasmoid/package/metadata.json > metadata.tmp
+          mv metadata.tmp plasmoid/package/metadata.json
+
+      - name: Build .plasmoid
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          mkdir -p dist
+          cd plasmoid/package
+          zip -rqX "$GITHUB_WORKSPACE/dist/plasma-docker-monitor-$VERSION.plasmoid" .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: plasmoid
+          path: dist/
+          if-no-files-found: error
+
+  api:
+    name: Test API and export OpenAPI document
+    needs: prepare
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Test
+        run: dotnet test -c Release
+
+      - name: Build (generates the OpenAPI document)
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: dotnet build src/PlasmaDockerMonitor.Api -c Release -p:ReleaseVersion="$VERSION"
+
+      # Microsoft.Extensions.ApiDescription.Server always writes to obj/, and
+      # suffixes the file with the document name (the version, see AppVersion)
+      - name: Export OpenAPI document
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          mkdir -p dist
+          cp "src/PlasmaDockerMonitor.Api/obj/PlasmaDockerMonitor-Api_$VERSION.json" \
+            "dist/plasma-docker-monitor-api-$VERSION.openapi.json"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: openapi
+          path: dist/
+          if-no-files-found: error
+
+  image:
+    name: Build and push container image
+    needs: [prepare, api]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+
+      - name: Log in to GHCR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: echo "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+
+      - name: Build
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/docker-plasmoid-api"
+          echo "IMAGE=$image" >> "$GITHUB_ENV"
+          docker build \
+            -f src/PlasmaDockerMonitor.Api/Dockerfile \
+            --build-arg VERSION="$VERSION" \
+            --label org.opencontainers.image.source="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
+            --label org.opencontainers.image.version="$VERSION" \
+            --label org.opencontainers.image.revision="$GITHUB_SHA" \
+            --label org.opencontainers.image.licenses="GPL-3.0" \
+            -t "$image:$VERSION" \
+            .
+
+      # Only the version tag: :latest moves when the draft is published
+      # (promote-latest.yml), not before anyone has reviewed it
+      - name: Push
+        id: push
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          docker push "$IMAGE:$VERSION"
+          # RepoDigests is "<image>@sha256:...", populated by the push
+          digest="$(docker inspect --format '{{index .RepoDigests 0}}' "$IMAGE:$VERSION")"
+          echo "digest=${digest#*@}" >> "$GITHUB_OUTPUT"
+
+      - name: Save image tarball
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          mkdir -p dist
+          docker save "$IMAGE:$VERSION" | gzip -9 > "dist/docker-plasmoid-api-$VERSION.image.tar.gz"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: image
+          path: dist/
+          if-no-files-found: error
+          compression-level: 0
+
+  release:
+    name: Create draft release
+    needs: [prepare, plasmoid, api, image]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+          # Full history and tags, to find the previous release for the notes
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Checksums
+        working-directory: dist
+        run: sha256sum * > SHA256SUMS && cat SHA256SUMS
+
+      - name: Write release notes
+        env:
+          TAG: ${{ needs.prepare.outputs.tag }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          DIGEST: ${{ needs.image.outputs.digest }}
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/docker-plasmoid-api"
+
+          if previous="$(git describe --tags --abbrev=0 --match 'v*' "$TAG^" 2>/dev/null)"; then
+            range="$previous..$TAG"
+            heading="Changes since $previous"
+          else
+            range="$TAG"
+            heading="Changes"
+          fi
+
+          {
+            echo "## $heading"
+            echo
+            git log --no-merges --pretty='- %s (%h)' "$range"
+            echo
+            echo "## Container image"
+            echo
+            echo '```'
+            echo "docker pull $image:$VERSION"
+            echo "docker pull $image@$DIGEST"
+            echo '```'
+            echo
+            echo "## Checksums (SHA-256)"
+            echo
+            echo "| Artifact | SHA-256 |"
+            echo "|---|---|"
+            echo "| \`$image:$VERSION\` (registry digest) | \`${DIGEST#sha256:}\` |"
+            while read -r hash file; do
+              echo "| \`$file\` | \`$hash\` |"
+            done < dist/SHA256SUMS
+            echo
+            echo 'Verify downloaded files with `sha256sum -c SHA256SUMS`.'
+          } > notes.md
+
+          cat notes.md
+
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.prepare.outputs.tag }}
+          PRERELEASE: ${{ needs.prepare.outputs.prerelease }}
+        run: |
+          flags=(--draft --verify-tag --title "$TAG" --notes-file notes.md)
+          [ "$PRERELEASE" = "true" ] && flags+=(--prerelease)
+          gh release create "$TAG" "${flags[@]}" dist/*

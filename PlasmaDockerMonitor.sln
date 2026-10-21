@@ -3,10 +3,21 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72D-47B6-A68D-7590B98EB39B}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{F2248A9E-C8A4-11F1-8C1E-00D861F95DA2}"
-EndProject 
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PlasmaDockerMonitor.Api", "src\PlasmaDockerMonitor.Api\PlasmaDockerMonitor.Api.csproj", "{25D267EB-4125-4F5D-A691-19FDEF949F35}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PlasmaDockerMonitor.Api.Tests", "test\PlasmaDockerMonitor.Api.Tests\PlasmaDockerMonitor.Api.Tests.csproj", "{77731F4A-C81F-4555-AE65-C0C78EC8A339}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SolutionItems", "SolutionItems", "{F66A28F3-5B05-4D97-9286-A2148ABEAC52}"
+	ProjectSection(SolutionItems) = preProject
+		.gitignore = .gitignore
+		.github\workflows\plasmoid-ci.yml = .github\workflows\plasmoid-ci.yml
+		.github\workflows\api-ci.yml = .github\workflows\api-ci.yml
+		.github\workflows\release.yml = .github\workflows\release.yml
+		.github\workflows\promote-latest.yml = .github\workflows\promote-latest.yml
+		.dockerignore = .dockerignore
+		docker-compose.yml = docker-compose.yml
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -50,6 +61,6 @@ Global
 		{25D267EB-4125-4F5D-A691-19FDEF949F35} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-	    {77731F4A-C81F-4555-AE65-C0C78EC8A339} = {F2248A9E-C8A4-11F1-8C1E-00D861F95DA2}
-    EndGlobalSection
+		{77731F4A-C81F-4555-AE65-C0C78EC8A339} = {F2248A9E-C8A4-11F1-8C1E-00D861F95DA2}
+	EndGlobalSection
 EndGlobal

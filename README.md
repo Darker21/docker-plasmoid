@@ -201,6 +201,33 @@ kpackagetool6 -t Plasma/Applet -i plasmoid/package
 
 Configure the API URL via the widget's own config dialog (right-click → Configure) — it defaults to `http://localhost:5169`, matching the API's default dev profile.
 
+## Releasing
+
+Releases are cut by `.github/workflows/release.yml`, either by pushing a tag:
+
+```bash
+git tag v1.0.0 && git push origin v1.0.0
+```
+
+or from the Actions tab (**Release → Run workflow**, enter `1.0.0`), which
+tags the selected branch itself. The tag is the version source of truth: it's
+stamped into the plasmoid's `metadata.json`, and into the API assembly and
+OpenAPI document via `-p:ReleaseVersion` (the image's `VERSION` build arg).
+Versions with a suffix (`1.1.0-rc.1`) become prereleases.
+
+The workflow runs the tests, then creates a **draft** release containing:
+
+- `plasma-docker-monitor-<ver>.plasmoid` — install with `kpackagetool6 -i`
+- `plasma-docker-monitor-api-<ver>.openapi.json` — the generated API document
+- `docker-plasmoid-api-<ver>.image.tar.gz` — the image, for `docker load`
+- `SHA256SUMS` for all of the above
+
+The image is also pushed to `ghcr.io/darker21/docker-plasmoid-api` under its
+version tag, and the notes list its registry digest alongside the file
+checksums, plus one line per commit since the previous tag. `:latest` is only
+moved when you publish the draft (`promote-latest.yml`, skipped for
+prereleases), and points at that same digest.
+
 ## Roadmap
 
 Condensed from the spec's §6 — see that section for full detail:

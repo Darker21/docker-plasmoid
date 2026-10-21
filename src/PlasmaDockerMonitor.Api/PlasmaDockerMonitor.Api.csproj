@@ -6,6 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <OpenApiGenerateDocumentsOptions>--file-name PlasmaDockerMonitor-Api</OpenApiGenerateDocumentsOptions>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
   </PropertyGroup>
 
   <ItemGroup>
@@ -30,6 +31,12 @@
 
   <ItemGroup Condition="'$(ReleaseVersion)' != ''">
     <AssemblyMetadata Include="ReleaseVersion" Value="$(ReleaseVersion)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\.dockerignore">
+      <Link>.dockerignore</Link>
+    </None>
   </ItemGroup>
 
   

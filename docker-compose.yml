@@ -1,0 +1,27 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: src/PlasmaDockerMonitor.Api/Dockerfile
+    image: plasma-docker-monitor-api
+    restart: unless-stopped
+    # Loopback only: the API has no auth yet and the socket mount below is
+    # root-equivalent on the host, so it mustn't be reachable from the LAN.
+    # 5169 matches the plasmoid's default API URL.
+    ports:
+      - "127.0.0.1:5169:8080"
+    # The image runs as a non-root user, which needs the host's docker group
+    # to open the socket. The gid differs per host, hence the variable
+    # (see README: Running the API in Docker).
+    group_add:
+      - "${DOCKER_GID:?set DOCKER_GID to the gid owning /var/run/docker.sock}"
+    # SELinux (e.g. Fedora) blocks containers from the docker socket even with
+    # the right group; harmless on hosts without SELinux.
+    security_opt:
+      - label=disable
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - logs:/app/Logs
+
+volumes:
+  logs:

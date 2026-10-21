@@ -113,6 +113,29 @@ by default it writes to the console and to `Logs/` (rolling hourly), with
 `appsettings.Development.json` bumping the minimum level to `Verbose` for
 local development.
 
+### Running the API in Docker
+
+```bash
+DOCKER_GID=$(stat -c '%g' /var/run/docker.sock) docker compose up -d --build
+```
+
+(or put `DOCKER_GID=<gid>` in a `.env` file next to `docker-compose.yml` —
+it's gitignored since the gid is host-specific).
+
+The compose file handles the three things the container needs to work:
+
+- **Socket access:** the image runs as a non-root user, so it's added to the
+  host group owning `/var/run/docker.sock` via `DOCKER_GID`.
+- **SELinux:** on enforcing hosts (e.g. Fedora) the container is still denied
+  the socket without `label=disable`; on other hosts the option is a no-op.
+- **Loopback-only port:** published on `127.0.0.1:5169`, matching the
+  plasmoid's default API URL. The API has no auth yet and the socket mount
+  is root-equivalent on the host, so don't expose it beyond localhost.
+
+The container runs in `Production`, so `/scalar` isn't available there. Logs
+go to the console (`docker compose logs -f`) and to the `logs` named volume
+mounted at `/app/Logs`.
+
 ### API overview
 
 | Endpoint | Description |

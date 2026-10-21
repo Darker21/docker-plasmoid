@@ -8,3 +8,4 @@ riderModule.iml
 /TASKS.md
 Logs/
 .vscode/
+.env

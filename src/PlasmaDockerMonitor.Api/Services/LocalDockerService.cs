@@ -3,6 +3,7 @@ using PlasmaDockerMonitor.Api.Models;
 using Docker.DotNet;
 using Docker.DotNet.Models;
 using PlasmaDockerMonitor.Api.Enums;
+using PlasmaDockerMonitor.Api.Logging;
 using ContainerState = PlasmaDockerMonitor.Api.Enums.ContainerState;
 
 namespace PlasmaDockerMonitor.Api.Services;
@@ -181,13 +182,10 @@ internal class LocalDockerService(IDockerClient dockerClient, ILogger<LocalDocke
         return result;
     }
 
-    private static string SanitizeForLog(string value) =>
-        value.Replace("\r", string.Empty).Replace("\n", string.Empty);
-
     private async Task<Result<TData>> PerformDockerRequest<TData>(string operationName, Func<Task<TData>> method)
         where TData : class
     {
-        var safeOperationName = SanitizeForLog(operationName);
+        var safeOperationName = operationName.SanitizeForLog();
         using var scope = logger.BeginScope("{Operation}", safeOperationName);
 
         logger.LogInformation("Starting Docker operation {Operation}", safeOperationName);

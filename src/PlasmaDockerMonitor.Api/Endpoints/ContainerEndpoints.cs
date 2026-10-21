@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using PlasmaDockerMonitor.Api.Enums;
+using PlasmaDockerMonitor.Api.Logging;
 using PlasmaDockerMonitor.Api.Models;
 using PlasmaDockerMonitor.Api.Services;
 
@@ -153,11 +154,7 @@ internal static class ContainerEndpoints
                 [Description("The name of the stack to retrieve stats for")]
                 string stackName) =>
             {
-                var sanitizedStackName = (stackName ?? string.Empty)
-                    .Replace("\r", string.Empty)
-                    .Replace("\n", string.Empty);
-
-                requestLogger.LogInformation("GET /compose/{StackName}/stats received", sanitizedStackName);
+                requestLogger.LogInformation("GET /compose/{StackName}/stats received", stackName.SanitizeForLog());
                 if (string.IsNullOrWhiteSpace(stackName))
                 {
                     logger.LogWarning("Stack name is required");

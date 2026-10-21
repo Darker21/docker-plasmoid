@@ -1,5 +1,9 @@
 # Plasma Docker Monitor
 
+[![API CI](https://github.com/Darker21/docker-plasmoid/actions/workflows/api-ci.yml/badge.svg?branch=develop)](https://github.com/Darker21/docker-plasmoid/actions/workflows/api-ci.yml)
+[![Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/Darker21/docker-plasmoid/badges/coverage.json)](https://github.com/Darker21/docker-plasmoid/actions/workflows/api-ci.yml)
+[![Plasmoid CI](https://github.com/Darker21/docker-plasmoid/actions/workflows/plasmoid-ci.yml/badge.svg?branch=develop)](https://github.com/Darker21/docker-plasmoid/actions/workflows/plasmoid-ci.yml)
+
 A KDE Plasma widget (plasmoid) for monitoring and controlling Docker containers,
 backed by a small custom API rather than talking to the Docker socket directly
 from QML. The API exists so that "local Docker today, remote homelab hosts
@@ -161,8 +165,11 @@ dotnet test
 
 The suite covers `LocalDockerService` (mocked `IDockerClient`), the endpoints
 (integration tests via `WebApplicationFactory`, with `IDockerService` mocked),
-and `Program.cs`'s own composition root — currently at 100% line/branch
-coverage. To check coverage yourself:
+and `Program.cs`'s own composition root. CI (`api-ci.yml`) fails the build if
+line or branch coverage drops below `MIN_COVERAGE`, and the coverage badge
+above is published from `develop` on every run. Source-generated code under
+`obj/` is excluded via `coverage.runsettings`, which the test project picks up
+automatically. To check coverage yourself:
 
 ```bash
 dotnet test --collect:"XPlat Code Coverage"

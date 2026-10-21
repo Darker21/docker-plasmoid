@@ -1,0 +1,141 @@
+name: API CI
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'src/**'
+      - 'test/**'
+      - '.dockerignore'
+      - '.github/workflows/api-ci.yml'
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'test/**'
+      - '.dockerignore'
+      - '.github/workflows/api-ci.yml'
+
+permissions:
+  contents: read
+
+env:
+  # The build fails if line or branch coverage drops below this
+  MIN_COVERAGE: 100
+
+jobs:
+  test:
+    name: Test with coverage
+    runs-on: ubuntu-latest
+    outputs:
+      badge: ${{ steps.coverage.outputs.badge }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # Picks up test/PlasmaDockerMonitor.Api.Tests/coverage.runsettings via the
+      # test project, which excludes source-generated code under obj/
+      - name: Test
+        run: dotnet test -c Release --collect:"XPlat Code Coverage" --results-directory coverage
+
+      - name: Check coverage
+        id: coverage
+        run: |
+          python3 - <<'PY'
+          import glob, json, os, sys
+          import xml.etree.ElementTree as ET
+
+          reports = glob.glob("coverage/*/coverage.cobertura.xml")
+          if len(reports) != 1:
+              sys.exit(f"Expected exactly one coverage report, found {reports}")
+
+          root = ET.parse(reports[0]).getroot()
+          line = float(root.get("line-rate")) * 100
+          branch = float(root.get("branch-rate")) * 100
+          minimum = float(os.environ["MIN_COVERAGE"])
+
+          def fmt(rate):
+              return f"{rate:.1f}".rstrip("0").rstrip(".") + "%"
+
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
+              summary.write("## API coverage\n\n| | Coverage |\n|---|---|\n")
+              summary.write(f"| Lines | {fmt(line)} |\n| Branches | {fmt(branch)} |\n")
+              summary.write(f"\nMinimum: {fmt(minimum)}\n")
+
+          lowest = min(line, branch)
+          badge = {
+              "schemaVersion": 1,
+              "label": "coverage",
+              "message": f"{fmt(line)} lines | {fmt(branch)} branches",
+              "color": "brightgreen" if lowest >= 100 else "green" if lowest >= 90 else "yellow" if lowest >= 75 else "red",
+          }
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write(f"badge={json.dumps(badge)}\n")
+
+          print(f"Lines {fmt(line)}, branches {fmt(branch)} (minimum {fmt(minimum)})")
+          if lowest < minimum:
+              sys.exit(f"::error::Coverage below the {fmt(minimum)} minimum")
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage
+          path: coverage/
+          if-no-files-found: ignore
+
+  # The README badge reads coverage.json off the orphan `badges` branch via
+  # shields.io, so the claim tracks develop instead of being hand-edited
+  badge:
+    name: Publish coverage badge
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: coverage-badge
+      cancel-in-progress: true
+
+    steps:
+      - name: Push coverage.json to the badges branch
+        env:
+          BADGE: ${{ needs.test.outputs.badge }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git init -q badges && cd badges
+          git checkout -q --orphan badges
+          printf '%s\n' "$BADGE" > coverage.json
+          git add coverage.json
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -q -m "Coverage for $GITHUB_SHA"
+          git push -f -q "https://x-access-token:$GH_TOKEN@github.com/$GITHUB_REPOSITORY.git" badges
+
+  docker:
+    name: Build and smoke-test API image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -f src/PlasmaDockerMonitor.Api/Dockerfile -t plasma-docker-monitor-api:ci .
+
+      # No socket mounted, so only /health-check is meaningful here — this
+      # proves the image actually starts and serves, not that Docker access
+      # works (that depends on host gid/SELinux, covered in the README).
+      - name: Smoke-test /health-check
+        run: |
+          docker run -d --name api -p 8080:8080 plasma-docker-monitor-api:ci
+          for i in $(seq 1 15); do
+            if curl -fsS http://localhost:8080/health-check; then exit 0; fi
+            sleep 1
+          done
+          docker logs api
+          exit 1

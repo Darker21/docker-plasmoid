@@ -69,7 +69,7 @@ internal static class ContainerEndpoints
                 ILogger<Program> requestLogger,
                 [Description("The id of the container to stop")] string containerId) =>
             {
-                requestLogger.LogInformation("POST /containers/{ContainerId}/stop received", containerId);
+                requestLogger.LogInformation("POST /containers/{ContainerId}/stop received", SanitizeForLog(containerId));
                 if (string.IsNullOrWhiteSpace(containerId))
                 {
                     requestLogger.LogWarning("Container id is required");

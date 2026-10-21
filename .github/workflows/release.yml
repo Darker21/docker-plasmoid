@@ -91,7 +91,7 @@ jobs:
           cd plasmoid/package
           zip -rqX "$GITHUB_WORKSPACE/dist/plasma-docker-monitor-$VERSION.plasmoid" .
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: plasmoid
           path: dist/
@@ -130,7 +130,7 @@ jobs:
           cp "src/PlasmaDockerMonitor.Api/obj/PlasmaDockerMonitor-Api_$VERSION.json" \
             "dist/plasma-docker-monitor-api-$VERSION.openapi.json"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: openapi
           path: dist/
@@ -192,7 +192,7 @@ jobs:
           mkdir -p dist
           docker save "$IMAGE:$VERSION" | gzip -9 > "dist/docker-plasmoid-api-$VERSION.image.tar.gz"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: image
           path: dist/

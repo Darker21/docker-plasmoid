@@ -181,52 +181,56 @@ internal class LocalDockerService(IDockerClient dockerClient, ILogger<LocalDocke
         return result;
     }
 
+    private static string SanitizeForLog(string value) =>
+        value.Replace("\r", string.Empty).Replace("\n", string.Empty);
+
     private async Task<Result<TData>> PerformDockerRequest<TData>(string operationName, Func<Task<TData>> method)
         where TData : class
     {
-        using var scope = logger.BeginScope("{Operation}", operationName);
+        var safeOperationName = SanitizeForLog(operationName);
+        using var scope = logger.BeginScope("{Operation}", safeOperationName);
 
-        logger.LogInformation("Starting Docker operation {Operation}", operationName);
+        logger.LogInformation("Starting Docker operation {Operation}", safeOperationName);
 
         try
         {
             var data = await method();
-            logger.LogInformation("Docker operation {Operation} completed successfully", operationName);
+            logger.LogInformation("Docker operation {Operation} completed successfully", safeOperationName);
             return Result<TData>.Ok(data);
         }
         catch (DockerContainerNotFoundException ex)
         {
-            logger.LogWarning(ex, "Container not found during {Operation}", operationName);
+            logger.LogWarning(ex, "Container not found during {Operation}", safeOperationName);
             return Result<TData>.Fail(ResultErrorKind.NotFound, "Container not found");
         }
         catch (DockerImageNotFoundException ex)
         {
-            logger.LogWarning(ex, "Image not found during {Operation}", operationName);
+            logger.LogWarning(ex, "Image not found during {Operation}", safeOperationName);
             return Result<TData>.Fail(ResultErrorKind.NotFound, "Image not found");
         }
         catch (DockerNetworkNotFoundException ex)
         {
-            logger.LogWarning(ex, "Network not found during {Operation}", operationName);
+            logger.LogWarning(ex, "Network not found during {Operation}", safeOperationName);
             return Result<TData>.Fail(ResultErrorKind.NotFound, "Network not found");
         }
         catch (DockerPluginNotFoundException ex)
         {
-            logger.LogWarning(ex, "Plugin not found during {Operation}", operationName);
+            logger.LogWarning(ex, "Plugin not found during {Operation}", safeOperationName);
             return Result<TData>.Fail(ResultErrorKind.NotFound, "Plugin not found");
         }
         catch (DockerApiException apiException)
         {
-            logger.LogError(apiException, "Docker API error during {Operation}", operationName);
+            logger.LogError(apiException, "Docker API error during {Operation}", safeOperationName);
             return Result<TData>.Fail(ResultErrorKind.DaemonError, "Internal docker error:\n" + apiException.Message);
         }
         catch (HttpRequestException ex)
         {
-            logger.LogError(ex, "Could not reach Docker daemon during {Operation}", operationName);
+            logger.LogError(ex, "Could not reach Docker daemon during {Operation}", safeOperationName);
             return Result<TData>.Fail(ResultErrorKind.Unreachable, "Request failed");
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Unhandled exception during {Operation}", operationName);
+            logger.LogError(ex, "Unhandled exception during {Operation}", safeOperationName);
             return Result<TData>.Fail(ResultErrorKind.Unknown, "Unknown error");
         }
     }

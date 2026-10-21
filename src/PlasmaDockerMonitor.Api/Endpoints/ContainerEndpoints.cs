@@ -8,13 +8,6 @@ namespace PlasmaDockerMonitor.Api.Endpoints;
 
 internal static class ContainerEndpoints
 {
-    private static string SanitizeForLog(string? input)
-    {
-        return input?
-            .Replace("\r", string.Empty)
-            .Replace("\n", string.Empty) ?? string.Empty;
-    }
-
     public static IEndpointRouteBuilder MapContainerEndpoints(this IEndpointRouteBuilder endpoints, ILogger logger)
     {
         logger.LogTrace("Mapping container endpoints");
@@ -46,7 +39,7 @@ internal static class ContainerEndpoints
                 ILogger<Program> requestLogger,
                 [Description("The id of the container to start")] string containerId) =>
             {
-                requestLogger.LogInformation("POST /containers/{ContainerId}/start received", SanitizeForLog(containerId));
+                requestLogger.LogInformation("POST /containers/{ContainerId}/start received", containerId.SanitizeForLog());
                 if (string.IsNullOrWhiteSpace(containerId))
                 {
                     requestLogger.LogWarning("Container id is required");
@@ -70,7 +63,7 @@ internal static class ContainerEndpoints
                 ILogger<Program> requestLogger,
                 [Description("The id of the container to stop")] string containerId) =>
             {
-                requestLogger.LogInformation("POST /containers/{ContainerId}/stop received", SanitizeForLog(containerId));
+                requestLogger.LogInformation("POST /containers/{ContainerId}/stop received", containerId.SanitizeForLog());
                 if (string.IsNullOrWhiteSpace(containerId))
                 {
                     requestLogger.LogWarning("Container id is required");
@@ -94,7 +87,7 @@ internal static class ContainerEndpoints
                 ILogger<Program> requestLogger,
                 [Description("The id of the container to restart")] string containerId) =>
             {
-                requestLogger.LogInformation("POST /containers/{ContainerId}/restart received", SanitizeForLog(containerId));
+                requestLogger.LogInformation("POST /containers/{ContainerId}/restart received", containerId.SanitizeForLog());
                 if (string.IsNullOrWhiteSpace(containerId))
                 {
                     requestLogger.LogWarning("Container id is required");
@@ -118,7 +111,7 @@ internal static class ContainerEndpoints
                 ILogger<Program> requestLogger,
                 [Description("The id of the container to retrieve the stats for")] string containerId) =>
             {
-                requestLogger.LogInformation("GET /containers/{ContainerId}/stats received", SanitizeForLog(containerId));
+                requestLogger.LogInformation("GET /containers/{ContainerId}/stats received", containerId.SanitizeForLog());
                 if (string.IsNullOrWhiteSpace(containerId))
                 {
                     requestLogger.LogWarning("Container id is required");
